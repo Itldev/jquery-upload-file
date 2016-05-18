@@ -1,14 +1,11 @@
 /*!
  * jQuery Upload File Plugin
- * version: 4.0.10
+ * version: 3.1.10
  * @requires jQuery v1.5 or later & form plugin
  * Copyright (c) 2013 Ravishanker Kusuma
  * http://hayageek.com/
  */
 (function ($) {
-    if($.fn.ajaxForm == undefined) {
-        $.getScript(("https:" == document.location.protocol ? "https://" : "http://") + "malsup.github.io/jquery.form.js");
-    }
     var feature = {};
     feature.fileapi = $("<input type='file'/>").get(0).files !== undefined;
     feature.formdata = window.FormData !== undefined;
@@ -36,7 +33,7 @@
             autoSubmit: true,
             showCancel: true,
             showAbort: true,
-            showDone: false,
+            showDone: true,
             showDelete: false,
             showError: true,
             showStatusAfterSuccess: true,
@@ -84,13 +81,14 @@
             downloadStr: "Download",
             customErrorKeyStr: "jquery-upload-file-error",
             showQueueDiv: false,
-            statusBarWidth: 400,
-            dragdropWidth: 400,
+            statusBarWidth: 500,
+            dragdropWidth: 500,
             showPreview: false,
             previewHeight: "auto",
             previewWidth: "100%",
             extraHTML:false,
-            uploadQueueOrder:'top'
+            uploadQueueOrder:'top',
+            errorMap: null
         }, options);
 
         this.fileCounter = 1;
@@ -121,10 +119,8 @@
             if($.fn.ajaxForm) {
 
                 if(s.dragDrop) {
-                    var dragDrop = $('<div class="' + s.dragDropContainerClass + '" style="vertical-align:top;"></div>').width(s.dragdropWidth);
-                    $(obj).append(dragDrop);
-                    $(dragDrop).append(uploadLabel);
-                    $(dragDrop).append($(s.dragDropStr));
+                    $(obj).append(uploadLabel);
+                    var dragDrop = $('#' + s.dragDropContainer); // Personalisation ITLDEV TF
                     setDragDropHandlers(obj, s, dragDrop);
 
                 } else {
@@ -297,36 +293,24 @@
                 obj.errorLog.html("");
                 var files = e.originalEvent.dataTransfer.files;
                 if(!s.multiple && files.length > 1) {
-                    if(s.showError) $("<div class='" + s.errorClass + "'>" + s.multiDragErrorStr + "</div>").appendTo(obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation ITLDEV
+                        var err = $("<div class='" + s.errorClass + "'>" + s.multiDragErrorStr + "</div>");
+                        manageError(err, s);
+                    }
                     return;
                 }
                 if(s.onSelect(files) == false) return;
                 serializeAndUploadFiles(s, obj, files);
             });
-            ddObj.on('dragleave', function (e) {
-                $(this).removeClass(s.dragDropHoverClass);
-            });
-
-            $(document).on('dragenter', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-            });
-            $(document).on('dragover', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                var that = $(this);
-                if (!that.hasClass(s.dragDropContainerClass)) {
-                    that.removeClass(s.dragDropHoverClass);
+            ddObj.on('dragleave', function (e) { // Personnalisation ITL
+                obj.dragging--;
+                if (obj.dragging <= 0) {
+                    $(this).removeClass(s.dragDropHoverClass);
+                    $('#' + s.dragDropHoverClass + 'Mask').hide();
                 }
             });
-            $(document).on('drop', function (e) {
-                e.stopPropagation();
-                e.preventDefault();
-                $(this).removeClass(s.dragDropHoverClass);
-            });
-
-        }
-
+	}
         function getSizeStr(size) {
             var sizeStr = "";
             var sizeKB = size / 1024;
@@ -365,11 +349,19 @@
                 
                 for (var i = 0; i < files.length; i++) {
                 if (!isFileTypeAllowed(obj, s, files[i].name)) {
-                    if (s.showError) $("<div><font color='red'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</font></div>").appendTo(obj.errorLog);
+                    if (s.showError){
+                        // Personnalisation Itldev TF
+                        var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
                 if (s.maxFileSize != -1 && files[i].size > s.maxFileSize) {
-                    if (s.showError) $("<div><font color='red'><b>" + files[i].name + "</b> " + s.sizeErrorStr + getSizeStr(s.maxFileSize) + "</font></div>").appendTo(obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation Itldev TF
+                        err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.sizeErrorStr + " " + getSizeStr(s.maxFileSize) + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
 	                fd.append(fileName+"[]", files[i]);
@@ -403,21 +395,35 @@
         function serializeAndUploadFiles(s, obj, files) {
             for(var i = 0; i < files.length; i++) {
                 if(!isFileTypeAllowed(obj, s, files[i].name)) {
-                    if(s.showError) $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>").appendTo(obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation Itldev TF
+                        var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
                 if(!s.allowDuplicates && isFileDuplicate(obj, files[i].name)) {
-                    if(s.showError) $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.duplicateErrorStr + "</div>").appendTo(obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation Itldev TF
+                        var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.duplicateErrorStr + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
                 if(s.maxFileSize != -1 && files[i].size > s.maxFileSize) {
-                    if(s.showError) $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.sizeErrorStr + getSizeStr(s.maxFileSize) + "</div>").appendTo(
-                        obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation Itldev TF
+                        err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.sizeErrorStr + " " + getSizeStr(s.maxFileSize) + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
                 if(s.maxFileCount != -1 && obj.selectedFiles >= s.maxFileCount) {
-                    if(s.showError) $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.maxFileCountErrorStr + s.maxFileCount + "</div>").appendTo(
-                        obj.errorLog);
+                    if(s.showError) {
+                        // Personnalisation Itldev TF
+                        var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.maxFileCountErrorStr + " " + s.maxFileCount + "</div>");
+                        manageError(err, s);
+                    }
                     continue;
                 }
                 obj.selectedFiles++;
@@ -548,8 +554,11 @@
                     var flist = [];
                     fileArray.push(filenameStr);
                     if(!isFileTypeAllowed(obj, s, filenameStr)) {
-                        if(s.showError) $("<div class='" + s.errorClass + "'><b>" + filenameStr + "</b> " + s.extErrorStr + s.allowedTypes + "</div>").appendTo(
-                            obj.errorLog);
+                        if(s.showError) {
+                            // Personnalisation ITLDEV
+                            var err = $("<div class='" + s.errorClass + "'><b>" + filenameStr + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
+                            manageError(err, s);
+                        }
                         return;
                     }
                     //fallback for browser without FileAPI
@@ -581,8 +590,11 @@
 
                     }
                     if(s.maxFileCount != -1 && (obj.selectedFiles + fileArray.length) > s.maxFileCount) {
-                        if(s.showError) $("<div class='" + s.errorClass + "'><b>" + fileList + "</b> " + s.maxFileCountErrorStr + s.maxFileCount + "</div>").appendTo(
-                            obj.errorLog);
+                        if(s.showError) {
+                            // Personnalisation ITLDEV
+                            var err = $("<div class='" + s.errorClass + "'><b>" + fileList + "</b> " + s.maxFileCountErrorStr + s.maxFileCount + "</div>");
+                            manageError(err, s);
+                        }
                         return;
                     }
                     obj.selectedFiles += fileArray.length;
@@ -641,12 +653,23 @@
                 }
             }
         }
+       // Personnalisation ITL
+        function manageError(err, s) {
+            if (s.showQueueDiv) {
+                var sb = $("<div class='ajax-file-upload-statusbar'></div>");
+                err.appendTo(sb)
+                s.showQueueDiv.content.prepend(sb);
+                s.showQueueDiv.divQueue.show();
+            } else {
+                err.appendTo(obj.errorLog);
+            }
+        }
 
 
 		function defaultProgressBar(obj,s)
 		{
 		
-			this.statusbar = $("<div class='ajax-file-upload-statusbar'></div>").width(s.statusBarWidth);
+			this.statusbar = $("<div class='ajax-file-upload-statusbar'></div>"); // Personalisation ITLDEV TF
             this.preview = $("<img class='ajax-file-upload-preview' />").width(s.previewWidth).height(s.previewHeight).appendTo(this.statusbar).hide();
             this.filename = $("<div class='ajax-file-upload-filename'></div>").appendTo(this.statusbar);
             this.progressDiv = $("<div class='ajax-file-upload-progress'>").appendTo(this.statusbar).hide();
@@ -780,7 +803,7 @@
                         s.onError.call(this, fileArray, 200, msg, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + msg + "</span>");
+                            pd.statusbar.append("<span class='" + s.errorClass + "'>" + s.errorMap[msg] + "</span>"); // Personnalisation ITLDEV
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
@@ -797,7 +820,7 @@
                     }
 
                     pd.abort.hide();
-                    s.onSuccess.call(this, fileArray, data, xhr, pd);
+
                     if(s.showStatusAfterSuccess) {
                         if(s.showDone) {
                             pd.done.show();
@@ -833,10 +856,11 @@
                         });
                     }
                     form.remove();
+                    // Personnalisation ITL. déplacé ici pour que les compteurs soient justes.
+                    s.onSuccess.call(this, fileArray, data, xhr, pd);
+      
                 },
                 error: function (xhr, status, errMsg) {
-                	pd.cancel.remove();
-                	progressQ.pop();
                     pd.abort.hide();
                     if(xhr.statusText == "abort") //we aborted it
                     {
@@ -847,7 +871,12 @@
                         s.onError.call(this, fileArray, status, errMsg, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + errMsg + "</span>");
+                            var koyaError = xhr.responseText.match(/KoyaError : (\d+)/m); // Personalisation Itldev
+                            if (koyaError != null) {
+                                pd.statusbar.append("<span class='" + s.errorClass + "'>" + s.errorMap[koyaError[1]] + "</span>"); // Personalisation Itldev
+                            } else {
+                                pd.statusbar.append("<span class='" + s.errorClass + "'>null Koya Error</span>");
+                            }
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
