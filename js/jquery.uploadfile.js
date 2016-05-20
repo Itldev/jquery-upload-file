@@ -1,6 +1,6 @@
 /*!
  * jQuery Upload File Plugin
- * version: 3.1.10
+ * version: 4.0.10
  * @requires jQuery v1.5 or later & form plugin
  * Copyright (c) 2013 Ravishanker Kusuma
  * http://hayageek.com/
@@ -62,7 +62,6 @@
             customProgressBar: false,
             abortButtonClass: "ajax-file-upload-abort",
             cancelButtonClass: "ajax-file-upload-cancel",
-            dragDropContainer: "dragDropContainer", // Personnalisation ITL
             dragDropContainerClass: "ajax-upload-dragdrop",
             dragDropHoverClass: "state-hover",
             errorClass: "ajax-file-upload-error",
@@ -121,11 +120,16 @@
             if($.fn.ajaxForm) {
 
                 if(s.dragDrop) {
-                	 // Personalisation ITLDEV TF
-                    $(obj).append(uploadLabel);
-                    var dragDrop = $('#' + s.dragDropContainer);
-                    setDragDropHandlers(obj, s, dragDrop);
-
+                	var dragDrop;
+			        if(dragDrop = $('.' + s.dragDropContainerClass)) {
+			            $(obj).append(uploadLabel);
+			        } else {
+			            dragDrop = $('<div class="' + s.dragDropContainerClass + '" style="vertical-align:top;"></div>').width(s.dragdropWidth);
+			            $(obj).append(dragDrop);
+			            $(dragDrop).append(uploadLabel);
+			            $(dragDrop).append($(s.dragDropStr));
+			        }
+		            setDragDropHandlers(obj, s, dragDrop);
                 } else {
                     $(obj).append(uploadLabel);
                 }
