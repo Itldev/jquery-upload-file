@@ -62,6 +62,7 @@
             customProgressBar: false,
             abortButtonClass: "ajax-file-upload-abort",
             cancelButtonClass: "ajax-file-upload-cancel",
+            dragDropContainer: "dragDropContainer", // Personnalisation ITL
             dragDropContainerClass: "ajax-upload-dragdrop",
             dragDropHoverClass: "state-hover",
             errorClass: "ajax-file-upload-error",
@@ -91,6 +92,7 @@
             errorMap: null
         }, options);
 
+        this.options = s;
         this.fileCounter = 1;
         this.selectedFiles = 0;
         var formGroup = "ajax-file-upload-" + (new Date().getTime());
@@ -119,8 +121,9 @@
             if($.fn.ajaxForm) {
 
                 if(s.dragDrop) {
+                	 // Personalisation ITLDEV TF
                     $(obj).append(uploadLabel);
-                    var dragDrop = $('#' + s.dragDropContainer); // Personalisation ITLDEV TF
+                    var dragDrop = $('#' + s.dragDropContainer);
                     setDragDropHandlers(obj, s, dragDrop);
 
                 } else {
@@ -129,7 +132,7 @@
                 $(obj).append(obj.errorLog);
                 
    				if(s.showQueueDiv)
-		        	obj.container =$("#"+s.showQueueDiv);
+		        	obj.container =s.showQueueDiv.content;
         		else
 		            obj.container = $("<div class='ajax-file-upload-container'></div>").insertAfter($(obj));
         
@@ -275,9 +278,11 @@
         
         function setDragDropHandlers(obj, s, ddObj) {
             ddObj.on('dragenter', function (e) {
+                obj.dragging++;
                 e.stopPropagation();
                 e.preventDefault();
                 $(this).addClass(s.dragDropHoverClass);
+                $('#' + s.dragDropHoverClass + 'Mask').show();
             });
             ddObj.on('dragover', function (e) {
                 e.stopPropagation();
@@ -285,18 +290,21 @@
                 var that = $(this);
                 if (that.hasClass(s.dragDropContainerClass) && !that.hasClass(s.dragDropHoverClass)) {
                     that.addClass(s.dragDropHoverClass);
+                    $('#' + s.dragDropHoverClass + 'Mask').show();
                 }
             });
             ddObj.on('drop', function (e) {
+                obj.dragging=0;
                 e.preventDefault();
                 $(this).removeClass(s.dragDropHoverClass);
+                $('#' + s.dragDropHoverClass + 'Mask').hide(); // Personnalisation ITL
                 obj.errorLog.html("");
                 var files = e.originalEvent.dataTransfer.files;
                 if(!s.multiple && files.length > 1) {
                     if(s.showError) {
                         // Personnalisation ITLDEV
                         var err = $("<div class='" + s.errorClass + "'>" + s.multiDragErrorStr + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     return;
                 }
@@ -352,7 +360,7 @@
                     if (s.showError){
                         // Personnalisation Itldev TF
                         var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -360,7 +368,7 @@
                     if(s.showError) {
                         // Personnalisation Itldev TF
                         err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.sizeErrorStr + " " + getSizeStr(s.maxFileSize) + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -398,7 +406,7 @@
                     if(s.showError) {
                         // Personnalisation Itldev TF
                         var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -406,7 +414,7 @@
                     if(s.showError) {
                         // Personnalisation Itldev TF
                         var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.duplicateErrorStr + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -414,7 +422,7 @@
                     if(s.showError) {
                         // Personnalisation Itldev TF
                         err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.sizeErrorStr + " " + getSizeStr(s.maxFileSize) + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -422,7 +430,7 @@
                     if(s.showError) {
                         // Personnalisation Itldev TF
                         var err = $("<div class='" + s.errorClass + "'><b>" + files[i].name + "</b> " + s.maxFileCountErrorStr + " " + s.maxFileCount + "</div>");
-                        manageError(err, s);
+                        manageError(obj, err, s);
                     }
                     continue;
                 }
@@ -557,7 +565,7 @@
                         if(s.showError) {
                             // Personnalisation ITLDEV
                             var err = $("<div class='" + s.errorClass + "'><b>" + filenameStr + "</b> " + s.extErrorStr + s.allowedTypes + "</div>");
-                            manageError(err, s);
+                            manageError(obj, err, s);
                         }
                         return;
                     }
@@ -593,7 +601,7 @@
                         if(s.showError) {
                             // Personnalisation ITLDEV
                             var err = $("<div class='" + s.errorClass + "'><b>" + fileList + "</b> " + s.maxFileCountErrorStr + s.maxFileCount + "</div>");
-                            manageError(err, s);
+                            manageError(obj, err, s);
                         }
                         return;
                     }
@@ -654,11 +662,11 @@
             }
         }
        // Personnalisation ITL
-        function manageError(err, s) {
+        function manageError(obj, err, s) {
             if (s.showQueueDiv) {
                 var sb = $("<div class='ajax-file-upload-statusbar'></div>");
-                err.appendTo(sb)
-                s.showQueueDiv.content.prepend(sb);
+                err.appendTo(sb);
+                obj.container.prepend(sb);
                 s.showQueueDiv.divQueue.show();
             } else {
                 err.appendTo(obj.errorLog);
@@ -861,6 +869,8 @@
       
                 },
                 error: function (xhr, status, errMsg) {
+                	pd.cancel.remove();
+                	progressQ.pop();
                     pd.abort.hide();
                     if(xhr.statusText == "abort") //we aborted it
                     {
