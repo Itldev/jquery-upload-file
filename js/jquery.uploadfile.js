@@ -50,7 +50,7 @@
             },
             onSubmit: function (files, xhr) {},
             onSuccess: function (files, response, xhr, pd) {},
-            onError: function (files, status, message, pd) {},
+            onError: function (files, status, message, xhr, pd) {},
             onCancel: function (files, pd) {},
             onAbort: function (files, pd) {},            
             downloadCallback: false,
@@ -81,17 +81,17 @@
             downloadStr: "Download",
             customErrorKeyStr: "jquery-upload-file-error",
             showQueueDiv: false,
-            statusBarWidth: 500,
-            dragdropWidth: 500,
+            statusBarWidth: 400,
+            dragdropWidth: 400,
             showPreview: false,
             previewHeight: "auto",
             previewWidth: "100%",
             extraHTML:false,
-            uploadQueueOrder:'top',
-            errorMap: null
+            uploadQueueOrder:'top'
         }, options);
 
         this.options = s;
+        this.dragging = 0; // comptabilise le nb de drag. Personnalisation ITL
         this.fileCounter = 1;
         this.selectedFiles = 0;
         var formGroup = "ajax-file-upload-" + (new Date().getTime());
@@ -136,7 +136,7 @@
                 $(obj).append(obj.errorLog);
                 
    				if(s.showQueueDiv)
-		        	obj.container =s.showQueueDiv.content;
+		        	obj.container =$("#"+s.showQueueDiv);
         		else
 		            obj.container = $("<div class='ajax-file-upload-container'></div>").insertAfter($(obj));
         
@@ -671,7 +671,7 @@
                 var sb = $("<div class='ajax-file-upload-statusbar'></div>");
                 err.appendTo(sb);
                 obj.container.prepend(sb);
-                s.showQueueDiv.divQueue.show();
+                obj.container.show();
             } else {
                 err.appendTo(obj.errorLog);
             }
@@ -681,7 +681,7 @@
 		function defaultProgressBar(obj,s)
 		{
 		
-			this.statusbar = $("<div class='ajax-file-upload-statusbar'></div>"); // Personalisation ITLDEV TF
+			this.statusbar = $("<div class='ajax-file-upload-statusbar'></div>").width(s.statusBarWidth);
             this.preview = $("<img class='ajax-file-upload-preview' />").width(s.previewWidth).height(s.previewHeight).appendTo(this.statusbar).hide();
             this.filename = $("<div class='ajax-file-upload-filename'></div>").appendTo(this.statusbar);
             this.progressDiv = $("<div class='ajax-file-upload-progress'>").appendTo(this.statusbar).hide();
@@ -812,10 +812,10 @@
                     if(s.returnType == "json" && $.type(data) == "object" && data.hasOwnProperty(s.customErrorKeyStr)) {
                         pd.abort.hide();
                         var msg = data[s.customErrorKeyStr];
-                        s.onError.call(this, fileArray, 200, msg, pd);
+                        s.onError.call(this, fileArray, 200, msg, xhr, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            pd.statusbar.append("<span class='" + s.errorClass + "'>" + s.errorMap[msg] + "</span>"); // Personnalisation ITLDEV
+                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + msg + "</span>");
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
@@ -882,15 +882,10 @@
                         updateFileCounter(s, obj);
 
                     } else {
-                        s.onError.call(this, fileArray, status, errMsg, pd);
+                        s.onError.call(this, fileArray, status, errMsg, xhr, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            var koyaError = xhr.responseText.match(/KoyaError : (\d+)/m); // Personalisation Itldev
-                            if (koyaError != null) {
-                                pd.statusbar.append("<span class='" + s.errorClass + "'>" + s.errorMap[koyaError[1]] + "</span>"); // Personalisation Itldev
-                            } else {
-                                pd.statusbar.append("<span class='" + s.errorClass + "'>null Koya Error</span>");
-                            }
+                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + errMsg + "</span>");
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
