@@ -94,6 +94,9 @@
         this.dragging = 0; // comptabilise le nb de drag. Personnalisation ITL
         this.fileCounter = 1;
         this.selectedFiles = 0;
+        this.fCounter = 0; //failed uploads
+        this.sCounter = 0; //success uploads
+        this.tCounter = 0; //total uploads
         var formGroup = "ajax-file-upload-" + (new Date().getTime());
         this.formGroup = formGroup;
         this.errorLog = $("<div></div>"); //Writing errors
@@ -758,6 +761,7 @@
                                         else options.data[$(this).attr('name')] = $(this).val();
                         	});
                         }
+                        obj.tCounter += fileArray.length;
                         return true;
                     }
                     pd.statusbar.append("<div class='" + s.errorClass + "'>" + s.uploadErrorStr + "</div>");
@@ -822,6 +826,7 @@
                         }
                         obj.selectedFiles -= fileArray.length; //reduce selected File count
                         form.remove();
+                        obj.fCounter += fileArray.length;
                         return;
                     }
                     obj.responses.push(data);
@@ -833,6 +838,8 @@
 
                     pd.abort.hide();
 
+                    obj.sCounter += fileArray.length;
+                    s.onSuccess.call(this, fileArray, data, xhr, pd);
                     if(s.showStatusAfterSuccess) {
                         if(s.showDone) {
                             pd.done.show();
@@ -868,9 +875,7 @@
                         });
                     }
                     form.remove();
-                    // Personnalisation ITL. déplacé ici pour que les compteurs soient justes.
-                    s.onSuccess.call(this, fileArray, data, xhr, pd);
-      
+
                 },
                 error: function (xhr, status, errMsg) {
                 	pd.cancel.remove();
@@ -894,6 +899,8 @@
                     }
 
                     form.remove();
+                    obj.fCounter += fileArray.length;
+
                 }
             };
 
