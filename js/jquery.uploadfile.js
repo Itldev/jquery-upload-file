@@ -48,6 +48,7 @@
             onSelect: function (files) {
                 return true;
             },
+            showUploadQueue: function() {}, // PERSONNALISATION ITLDEV        
             onSubmit: function (files, xhr) {},
             onSuccess: function (files, response, xhr, pd) {},
             onError: function (files, status, message, xhr, pd) {},
@@ -94,9 +95,10 @@
         this.dragging = 0; // comptabilise le nb de drag. Personnalisation ITL
         this.fileCounter = 1;
         this.selectedFiles = 0;
-        this.fCounter = 0; //failed uploads
-        this.sCounter = 0; //success uploads
-        this.tCounter = 0; //total uploads
+        
+        this.itlCptSuccess = 0; // PERSONNALISATION ITLDEV 
+        this.itlCptTotal = 0; // PERSONNALISATION ITLDEV 
+
         var formGroup = "ajax-file-upload-" + (new Date().getTime());
         this.formGroup = formGroup;
         this.errorLog = $("<div></div>"); //Writing errors
@@ -167,6 +169,7 @@
             return obj.selectedFiles;
 
         }
+        
         this.stopUpload = function () {
             $("." + s.abortButtonClass).each(function (i, items) {
                 if($(this).hasClass(obj.formGroup)) $(this).click();
@@ -185,7 +188,7 @@
             s = $.extend(s, settings);
         }
         this.reset = function (removeStatusBars) {
-			obj.fileCounter = 1;
+                        obj.fileCounter = 1;
 			obj.selectedFiles = 0;
 			obj.errorLog.html("");
 					//remove all the status bars.
@@ -219,6 +222,8 @@
             pd.filename.html(fileNameStr);
             obj.fileCounter++;
             obj.selectedFiles++;
+            obj.itlCptTotal++; // PERSONNALISATION ITLDEV
+            
             if(s.showPreview)
             {
                 pd.preview.attr('src',filepath);
@@ -249,6 +254,11 @@
         this.getResponses = function () {
             return this.responses;
         }
+        // PERSONNALISATION ITLDEV
+        this.isAjaxInProgress = function () {
+            return (mainQ.length!==0);
+        }
+        //
         var mainQ=[];
         var progressQ=[]
         var running = false;
@@ -278,7 +288,7 @@
     	    					frm.submit();
         					}
 						}						
-						window.setTimeout(checkPendingForms, 100);
+						window.setTimeout(checkPendingForms, 1000);
 					}
                 })();
         }
@@ -442,6 +452,9 @@
                     continue;
                 }
                 obj.selectedFiles++;
+                
+                obj.itlCptTotal++; // PERSONNALISATION ITLDEV
+                
                 obj.existingFileNames.push(files[i].name);
                 var ts = s;
                 var fd = new FormData();
@@ -472,7 +485,6 @@
                 form.appendTo('body');
                 var fileArray = [];
                 fileArray.push(files[i].name);
-                
                 ajaxFormSubmit(form, ts, pd, fileArray, obj, files[i]);
                 obj.fileCounter++;
             }
@@ -674,7 +686,7 @@
                 var sb = $("<div class='ajax-file-upload-statusbar'></div>");
                 err.appendTo(sb);
                 obj.container.prepend(sb);
-                obj.container.show();
+                s.showUploadQueue.call();
             } else {
                 err.appendTo(obj.errorLog);
             }
@@ -700,6 +712,10 @@
 			this.download.addClass("ajax-file-upload-green");            
             this.cancel.addClass("ajax-file-upload-red");
             this.del.addClass("ajax-file-upload-red");
+            // PERSONNALISATION ITLDEV
+            this.abort.addClass("ajax-file-upload-btn");
+            this.done.addClass("ajax-file-upload-btn itlUploadBtnAbort"); // itlUploadBtnAbort obligatoire
+            this.cancel.addClass("ajax-file-upload-btn");
             
 			return this;
 		}
@@ -714,7 +730,7 @@
             bar.abort.addClass(s.abortButtonClass);        	
 
             bar.cancel.addClass(obj.formGroup);
-            bar.cancel.addClass(s.cancelButtonClass);    
+            bar.cancel.addClass(s.cancelButtonClass);
             
             if(s.extraHTML)
 	            bar.extraHTML = $("<div class='extrahtml'>"+s.extraHTML()+"</div>").insertAfter(bar.filename);    	
@@ -761,7 +777,6 @@
                                         else options.data[$(this).attr('name')] = $(this).val();
                         	});
                         }
-                        obj.tCounter += fileArray.length;
                         return true;
                     }
                     pd.statusbar.append("<div class='" + s.errorClass + "'>" + s.uploadErrorStr + "</div>");
@@ -788,7 +803,8 @@
                             removeExistingFileName(obj, fileArray);
                             xhr.abort();
                             obj.selectedFiles -= fileArray.length; //reduce selected File count
-							s.onAbort.call(obj, fileArray, pd);
+                            obj.itlCptTotal--; // PERSONNALISATION ITLDEV
+                            s.onAbort.call(obj, fileArray, pd);
 
                         });
                     }
@@ -816,17 +832,17 @@
                     if(s.returnType == "json" && $.type(data) == "object" && data.hasOwnProperty(s.customErrorKeyStr)) {
                         pd.abort.hide();
                         var msg = data[s.customErrorKeyStr];
-                        s.onError.call(this, fileArray, 200, msg, xhr, pd);
+                        // PERSONNALISATION ITLDEV - traitement de l'erreur Koya dans le s.onErrorCall
+                        var itlError=s.onError.call(this, fileArray, 200, msg, xhr, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + msg + "</span>");
+                            if(!itlError) pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR 1: " + msg + "</span>");
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
                         }
                         obj.selectedFiles -= fileArray.length; //reduce selected File count
                         form.remove();
-                        obj.fCounter += fileArray.length;
                         return;
                     }
                     obj.responses.push(data);
@@ -837,8 +853,9 @@
                     }
 
                     pd.abort.hide();
-
-                    obj.sCounter += fileArray.length;
+                    
+                    obj.itlCptSuccess++;
+                    
                     s.onSuccess.call(this, fileArray, data, xhr, pd);
                     if(s.showStatusAfterSuccess) {
                         if(s.showDone) {
@@ -887,10 +904,18 @@
                         updateFileCounter(s, obj);
 
                     } else {
-                        s.onError.call(this, fileArray, status, errMsg, xhr, pd);
+                        // PERSONNALISATION ITLDEV - Gestion de l'erreur
+                        // Réaffichage bouton abort pour retirer le fichier de la queue
+                        // pd.abort.show();
+                         // pd.abort.click(function () {
+                         //  pd.statusbar.hide("slow");
+                        //    pd.statusbar.remove();
+                        // });
+
+                        var itlError=s.onError.call(this, fileArray, status, errMsg, xhr, pd);
                         if(s.showStatusAfterError) {
                             pd.progressDiv.hide();
-                            pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR: " + errMsg + "</span>");
+                            if(!itlError) pd.statusbar.append("<span class='" + s.errorClass + "'>ERROR 2: " + errMsg + "</span>");
                         } else {
                             pd.statusbar.hide();
                             pd.statusbar.remove();
@@ -899,36 +924,32 @@
                     }
 
                     form.remove();
-                    obj.fCounter += fileArray.length;
-
                 }
             };
 
             if(s.showPreview && file != null) {
                 if(file.type.toLowerCase().split("/").shift() == "image") getSrcToPreview(file, pd.preview);
             }
-
-            if(s.autoSubmit) {
-	            form.ajaxForm(options);
-                mainQ.push(form);
-            	submitPendingUploads();
-	            
-            } else {
-                if(s.showCancel) {
-                    pd.cancel.show();
-                    pd.cancel.click(function () {
-	                     mainQ.splice(mainQ.indexOf(form), 1);
-                        removeExistingFileName(obj, fileArray);
-                        form.remove();
-                        pd.statusbar.remove();
-                        s.onCancel.call(obj, fileArray, pd);
-                        obj.selectedFiles -= fileArray.length; //reduce selected File count
-                        updateFileCounter(s, obj);
-                    });
-                }
-	            form.ajaxForm(options);
+            
+            
+            if(s.showCancel) {
+                pd.cancel.show();
+                pd.cancel.click(function () {
+                    mainQ.splice(mainQ.indexOf(form), 1);
+                    removeExistingFileName(obj, fileArray);
+                    form.remove();
+                    pd.statusbar.remove();
+                    obj.itlCptTotal --;
+                    s.onCancel.call(obj, fileArray, pd);
+                    obj.selectedFiles -= fileArray.length; //reduce selected File count
+                    updateFileCounter(s, obj);
+                });
             }
-
+            form.ajaxForm(options);
+            if(s.autoSubmit) {
+                mainQ.push(form);
+                submitPendingUploads();
+            }
         }
         return this;
 
